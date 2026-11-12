@@ -17,14 +17,11 @@ from sklearn.metrics import (
 import matplotlib.pyplot as plt
 
 
-# Load dataset
 df = pd.read_csv("data/claims.csv")
 
-# Separate features and target
 X = df.drop(columns=["id", "status"])
 y = df["status"]
 
-# Stratified train-test split
 X_train, X_test, y_train, y_test = train_test_split(
     X,
     y,
@@ -36,11 +33,9 @@ X_train, X_test, y_train, y_test = train_test_split(
 print("Training records:", len(X_train))
 print("Testing records:", len(X_test))
 
-# Create a combined training dataframe
 train_data = X_train.copy()
 train_data["status"] = y_train
 
-# Out-of-fold encoding
 payer_denial_rate_train = pd.Series(
     index=X_train.index,
     dtype=float
@@ -66,7 +61,6 @@ for train_idx, valid_idx in skf.split(X_train, y_train):
         fold_valid["payer"].map(rates).fillna(0)
     )
 
-# Calculate full training rates for test data and future predictions
 payer_denial_rate = (
     train_data.groupby("payer")["status"]
     .apply(lambda s: (s == "Denied").mean())
@@ -77,7 +71,6 @@ payer_denial_rate_test = (
     X_test["payer"].map(payer_denial_rate).fillna(0)
 )
 
-# Provider average billed amount
 provider_avg_amount = (
     X_train.groupby("provider")["billed_amount"]
     .mean()
@@ -94,7 +87,6 @@ provider_avg_test = (
     .fillna(X_train["billed_amount"].mean())
 )
 
-# Add engineered features
 X_train = X_train.copy()
 X_test = X_test.copy()
 
@@ -149,19 +141,15 @@ pipeline = Pipeline(steps=[
     ("classifier", model)
 ])
 
-# Train model
 pipeline.fit(X_train, y_train)
 
 print("Random Forest training completed!")
 
-# Generate predictions
 y_pred = pipeline.predict(X_test)
 
-# Classification report
 print("\nClassification Report:")
 print(classification_report(y_test, y_pred, zero_division=0))
 
-# Confusion matrix
 labels = ["Paid", "Partially_Paid", "Denied"]
 
 cm = confusion_matrix(
@@ -173,7 +161,6 @@ cm = confusion_matrix(
 print("\nConfusion Matrix:")
 print(cm)
 
-# Plot confusion matrix
 disp = ConfusionMatrixDisplay(
     confusion_matrix=cm,
     display_labels=labels
@@ -187,10 +174,8 @@ plt.show()
 
 os.makedirs("models", exist_ok=True)
 
-# Save trained model pipeline
 joblib.dump(pipeline, "models/claim_model.pkl")
 
-# Save feature engineering mappings
 feature_metadata = {
     "payer_denial_rate": payer_denial_rate,
     "provider_avg_amount": provider_avg_amount,
